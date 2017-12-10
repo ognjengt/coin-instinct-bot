@@ -1,0 +1,23 @@
+{
+  "name": "coin-instinct-bot",
+  "version": "1.0.0",
+  "description": "Twitter bot that tweets future bitcoin value predictions.",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ognjengt/coin-instinct-bot.git"
+  },
+  "author": "Ognjen Gatalo",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ognjengt/coin-instinct-bot/issues"
+  },
+  "homepage": "https://github.com/ognjengt/coin-instinct-bot#readme",
+  "dependencies": {
+    "twit": "^2.2.9"
+  }
+}
