@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/ognjengt/coin-instinct-bot#readme",
   "dependencies": {
+    "node-fetch": "^1.7.3",
     "twit": "^2.2.9"
   }
 }
