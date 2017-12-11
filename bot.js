@@ -1,13 +1,15 @@
 const config = require('./config');
 var Twit = require('twit');
 var fetch = require('node-fetch');
+var humanFactorFunctions = require('./humanFactor');
 
 var bitcoinData = {
   results: ''
 };
+var ratio = 0;
 var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
-// Predict for 3 days
+// Vidi kasnije da li je mozda bolje da tvituju bez #
 var demandSearchParams = {
   q: '@coin_instinct Predict for #coininstinct since:2017-12-11', 
   count: 100
@@ -40,6 +42,8 @@ function work() {
     // When all the tweets are here, go through them, extract numbers and find most frequent day
     .then( (tweets) => {
       var requestedDays = [];
+      tweets = tweets.filter(tweet => tweet.includes('@coin_instinct Predict for') && tweet.includes('#coininstinct'));
+      console.log(tweets);
 
       tweets.forEach((tweet) => {
         var day = tweet.match(/\d+/g);
@@ -55,10 +59,18 @@ function work() {
     .then( (pastBitcoinValue) => {
       return calculateRatio(pastBitcoinValue,bitcoinData.results.USD.last);
     })
-    // When the ratio is calculated, get all tweets containing strings such as 'bitcoin drops' etc. to calculate disasterFactor
+    // When the ratio is calculated, get all tweets containing strings such as 'bitcoin drops' etc. to calculate humanFactor
     .then( (ratio) => {
-      console.log(ratio);
-      // TODO get tweets containing bitcoin drops, etc, and calculate disaster factor
+      this.ratio = ratio;
+      return collectTweets(bitcoinDropRatesSearchParams).then( (response) => {
+        return response.data.statuses.map(status => status.text);
+      })
+    })
+    .then( (negativeTweets) => {
+        return humanFactorFunctions.calculateHumanFactor(negativeTweets);
+    })
+    .then( (humanFactor) => {
+       console.log('Human factor: '+humanFactor);
     })
 
   },3000);
@@ -75,7 +87,7 @@ async function collectTweets(searchParams) {
  * @param {*Array} requestedDays Array of day values
  */
 async function getMostFrequentDay(requestedDays) {
-  if(requestedDays.length == 0) // TODO use custom array
+  //if(!requestedDays) // TODO use custom array
   var convertedArray = requestedDays.map(Number);
   return await findMostFrequent(convertedArray);
 }
@@ -92,15 +104,17 @@ function refreshBitcoinPrices(tickerApiUrl) {
     bitcoinData.results = results;
     if(bitcoinData.results) {console.log('Blockchain API works!');}
     else console.log('Blockchain API is down at the moment.');
+
+    console.log('New prices fetched.');
+    console.log('Most recent bitcoin price: '+bitcoinData.results.USD.last);
   }
 
     request(tickerApiUrl);
 
     // Enable in prod
     // setInterval(() => {
-    //   refreshBitcoinPrices(tickerApiUrl,chartsApiUrl);
-    //   console.log(bitcoinData.results);
-    // },60000);
+    //   request(tickerApiUrl,chartsApiUrl);
+    // },10000);
 }
 
 /**
@@ -119,6 +133,12 @@ async function queryChartHistory(chartsApiUrl, daysInThePast) {
   return json.bpi[''+date];
 }
 
+/**
+ * Calculates the bitcoin rise or drop from past value to current value
+ * Returns ratio
+ * @param {*Float} pastBitcoinValue 
+ * @param {*Float} currentBitcoinValue 
+ */
 async function calculateRatio(pastBitcoinValue,currentBitcoinValue) {
   return currentBitcoinValue-pastBitcoinValue;
 }
