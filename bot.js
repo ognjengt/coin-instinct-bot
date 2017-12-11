@@ -7,6 +7,15 @@ var bitcoinData = {
 };
 var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
+// Predict for 3 days
+var demandSearchParams = {
+  q: '@coin_instinct Predict for #coininstinct since:2017-12-11', 
+  count: 100
+};
+var bitcoinDropRatesSearchParams = {
+  q: 'Bitcoin drops since:2017-12-11',
+  count: 100
+};
 
 var twitClient = new Twit({
   consumer_key:         config.consumer_key,
@@ -16,45 +25,58 @@ var twitClient = new Twit({
   timeout_ms:           60*1000,
 });
 
-//refreshBitcoinPrices(tickerApiUrl);
+refreshBitcoinPrices(tickerApiUrl);
 
 work();
 
-
-// async function fetchBtc(tickerApiUrl) {
-//   const response = await fetch(tickerApiUrl);
-//   const btc = await response.json();
-//   return btc;
-// }
-
-// async function fetch2(tickerApiUrl) {
-//   const response = await fetch(tickerApiUrl);
-//   const btc = await response.json();
-//   return btc;
-// }
-
 function work() {
   setInterval(function(){
-    
-    // fetchBtc(tickerApiUrl).then((data) => {
-    //   console.log('Izvrsena prva');
-    //   fetch2(tickerApiUrl).then( (data) => {
-    //     console.log('Izvrsena druga')
-    //   } )
-    // })
 
-    collectTweetDemands().then(function(response) {
-      console.log(response.data.statuses.map(status => status.text));
+    // Collects tweets that people tweeted to @coin_instinct
+    collectTweets(demandSearchParams)
+    .then((response) => {
+      return response.data.statuses.map(status => status.text);
+    })
+    // When all the tweets are here, go through them, extract numbers and find most frequent day
+    .then( (tweets) => {
+      var requestedDays = [];
+
+      tweets.forEach((tweet) => {
+        var day = tweet.match(/\d+/g);
+        requestedDays.push(day[0]);
+      });
+      return getMostFrequentDay(requestedDays);
+    })
+    // When most frequent day is found, get bitcoin value of that specific date in the history
+    .then( (mostFrequentDay) => {
+      return queryChartHistory(chartsApiUrl,mostFrequentDay);
+    })
+    // When bitcoin value for that specific date is found, calculate the ratio between current bitcoin value, and history bitcoin value
+    .then( (pastBitcoinValue) => {
+      return calculateRatio(pastBitcoinValue,bitcoinData.results.USD.last);
+    })
+    // When the ratio is calculated, get all tweets containing strings such as 'bitcoin drops' etc. to calculate disasterFactor
+    .then( (ratio) => {
+      console.log(ratio);
+      // TODO get tweets containing bitcoin drops, etc, and calculate disaster factor
     })
 
   },3000);
 }
 
 /**
- * Collects users demands, how much days in the future to predict the value
+ * Collects tweets, based on parameters
  */
-async function collectTweetDemands() {
-  return await twitClient.get('search/tweets', {q: 'bitcoin since:2017-12-11T02:00', count: 2});
+async function collectTweets(searchParams) {
+  return await twitClient.get('search/tweets', searchParams);
+}
+/**
+ * Finds the most frequent day in array of days, and returns it
+ * @param {*Array} requestedDays Array of day values
+ */
+async function getMostFrequentDay(requestedDays) {
+  var convertedArray = requestedDays.map(Number);
+  return await findMostFrequent(convertedArray);
 }
 
 /**
@@ -67,7 +89,7 @@ function refreshBitcoinPrices(tickerApiUrl) {
     results = await results.json();
 
     bitcoinData.results = results;
-    if(bitcoinData.results) {console.log('Blockchain API works!'); console.log(bitcoinData)}
+    if(bitcoinData.results) {console.log('Blockchain API works!');}
     else console.log('Blockchain API is down at the moment.');
   }
 
@@ -82,9 +104,46 @@ function refreshBitcoinPrices(tickerApiUrl) {
 
 /**
  * Queries the CoinDesk api for specific date span
+ * Returns price of bitcoin for a specific date in history
  * @param {*String} chartsApiUrl API endpoint for getting bitcoin history values
- * @param {*String} parameters query parameters
+ * @param {*String} daysInThePast how many days to go backwards
  */
-function queryChartHistory(chartsApiUrl, parameters) {
+async function queryChartHistory(chartsApiUrl, daysInThePast) {
+  var date = new Date();
+  date.setDate(date.getDate() - daysInThePast);
+  date = date.toISOString().split('T')[0];
   
+  const result = await fetch(chartsApiUrl+'?'+'start='+date+'&end='+date);
+  const json = await result.json();
+  return json.bpi[''+date];
+}
+
+async function calculateRatio(pastBitcoinValue,currentBitcoinValue) {
+  return currentBitcoinValue-pastBitcoinValue;
+}
+
+/**
+ * Algorithm behind finding the most frequent number in array
+ * @param {*Array} array array of days
+ */
+async function findMostFrequent(array)
+{
+    if(array.length == 0)
+        return null;
+    var modeMap = {};
+    var maxEl = array[0], maxCount = 1;
+    for(var i = 0; i < array.length; i++)
+    {
+        var el = array[i];
+        if(modeMap[el] == null)
+            modeMap[el] = 1;
+        else
+            modeMap[el]++;  
+        if(modeMap[el] > maxCount)
+        {
+            maxEl = el;
+            maxCount = modeMap[el];
+        }
+    }
+    return maxEl;
 }
