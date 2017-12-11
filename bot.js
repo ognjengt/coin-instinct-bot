@@ -75,6 +75,7 @@ async function collectTweets(searchParams) {
  * @param {*Array} requestedDays Array of day values
  */
 async function getMostFrequentDay(requestedDays) {
+  if(requestedDays.length == 0) // TODO use custom array
   var convertedArray = requestedDays.map(Number);
   return await findMostFrequent(convertedArray);
 }
@@ -128,6 +129,7 @@ async function calculateRatio(pastBitcoinValue,currentBitcoinValue) {
  */
 async function findMostFrequent(array)
 {
+  // TODO ideja: kada uzme array taj i ispise onaj koji se najvise ponavlja da sacuva taj broj negde i sledeci put kada uzme, da ne bi ispisivao opet tipa za 5 dana, sada skloni taj najveci i ispisuje onaj sledeci najveci, u narednih tipa 3 sata, onda se sacuvani brojaci resetuju
     if(array.length == 0)
         return null;
     var modeMap = {};
