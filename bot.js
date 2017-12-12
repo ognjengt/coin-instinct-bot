@@ -6,6 +6,7 @@ var humanFactorFunctions = require('./humanFactor');
 var bitcoinData = {
   results: ''
 };
+var K = 10;
 var ratio = 0;
 var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
@@ -143,13 +144,78 @@ async function queryChartHistory(chartsApiUrl, daysInThePast) {
     ]
   */
   // dalje se poziva funkcija calculateRatio
-  var date = new Date();
-  date.setDate(date.getDate() - daysInThePast);
-  date = date.toISOString().split('T')[0];
-  
-  const result = await fetch(chartsApiUrl+'?'+'start='+date+'&end='+date);
-  const json = await result.json();
-  return json.bpi[''+date];
+  var nDaysBack = new Date();
+  nDaysBack.setDate(nDaysBack.getDate() - daysInThePast);
+  nDaysBack = nDaysBack.toISOString().split('T')[0];
+
+  var twoMonthsBack = new Date();
+  twoMonthsBack.setDate(twoMonthsBack.getDate() - daysInThePast - 60);
+  twoMonthsBack = twoMonthsBack.toISOString().split('T')[0];
+
+  const results = await fetch(chartsApiUrl+'?start='+twoMonthsBack+'&end='+nDaysBack);
+  const resultsJson = await results.json();
+  //console.log(resultsJson);
+
+  const similarities = await calculateSimilarity(resultsJson, chartsApiUrl, bitcoinData.results.USD.last);
+  const kNearest = await getNearestNeighbours(similarities);
+
+  // Dobio sam k nearest, sada za svaki taj idi daysInThePast dana u napred i uzmi vrednosti bitcoina od tih datuma u napred i izracunaj razliku bitcoina tog datuma u napred i tog datuma iz liste
+
+  console.log(kNearest);
+
+  // const result = await fetch(chartsApiUrl+'?'+'start='+nDaysBack+'&end='+nDaysBack);
+  // const json = await result.json();
+  // return json.bpi[''+nDaysBack];
+}
+
+/**
+ * Calculates the similarity score (distance between current bitcoin value and all of the other bitcoin values in the past)
+ * Returns JSON object with similarity scores ID: date, value: the similarity between current btc value and the value on that day (the lower the number, they are more similar)
+ * @param {*Object} data 
+ * @param {*String} chartsApiUrl 
+ * @param {*Int} currentBTCValue 
+ */
+async function calculateSimilarity(data, chartsApiUrl, currentBTCValue) {
+  // Go through all and calculate currentBtc - data[key]
+  var similarities = [];
+  /*
+    Similarity object looks something like this:
+    {
+      date: '2017-10-08',
+      similarityScore: 1140 (difference between current BTC and btc on that day)
+    }
+  */
+  Object.keys(data.bpi).forEach( (key,index) => {
+    var similarity = {
+      date: key,
+      similarityScore: currentBTCValue - data.bpi[key]
+    }
+    similarities.push(similarity);
+  });
+  return similarities;
+}
+
+/**
+ * Returns k nearest neighbours (dates) based on similarityScores
+ * @param {*Array} similarities data with all of the similarity scores compared to current bitcoin value, all the way up to 2 months back
+ */
+async function getNearestNeighbours(similarities) {
+  // Run through, and find k(10) that are closest to 0
+  var absSimilarities = [];
+  similarities.forEach( (similarity) => {
+    absSimilarities.push({
+      date: similarity.date,
+      similarityScore: Math.abs(similarity.similarityScore)
+    })
+  })
+  absSimilarities = absSimilarities.sort(function(a,b) {
+    return (a.similarityScore > b.similarityScore) ? 1 : ((b.similarityScore > a.similarityScore) ? -1 : 0);
+  });
+  var kNearest = [];
+  for(var i = 0; i < K; i++) {
+    kNearest.push(absSimilarities[i].date);
+  }
+  return kNearest;
 }
 
 /**
