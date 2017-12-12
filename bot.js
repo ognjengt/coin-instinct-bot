@@ -1,4 +1,6 @@
 const { forEach } = require('p-iteration');
+const format = require('number-format.js');
+
 const config = require('./config');
 var Twit = require('twit');
 var fetch = require('node-fetch');
@@ -9,12 +11,17 @@ var bitcoinData = {
 };
 const K = 10;
 const QUERY_RANGE = 60;
-var prediction = 0;
+const WORK_TIMEOUT = 10000; // should be 1000 * 60 * 60
+const COIN_FETCH_TIMEOUT = 5000; // should be 
+
+var prediction = {};
+var lastRequestedDaySpan = 0;
+var lastNumberOfPeopleThatRequested = 0;
 var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 // Vidi kasnije da li je mozda bolje da tvituju bez #
 var demandSearchParams = {
-  q: '@coin_instinct Predict for #coininstinct since:2017-12-11', 
+  q: '@coin_instinct Predict for since:2017-12-11', 
   count: 100
 };
 var bitcoinDropRatesSearchParams = {
@@ -45,27 +52,39 @@ function work() {
     // When all the tweets are here, go through them, extract numbers and find most frequent day
     .then( (tweets) => {
       var requestedDays = [];
-      tweets = tweets.filter(tweet => tweet.includes('@coin_instinct Predict for') && tweet.includes('#coininstinct'));
+      tweets = tweets.filter(tweet => tweet.includes('@coin_instinct Predict for'));
       console.log(tweets);
 
       tweets.forEach((tweet) => {
         var day = tweet.match(/\d+/g);
         requestedDays.push(day[0]);
       });
+      this.lastNumberOfPeopleThatRequested = requestedDays.length;
       return getMostFrequentDay(requestedDays);
     })
     // When most frequent day is found, get bitcoin value of that specific date in the history
     .then( (mostFrequentDay) => {
+      this.lastRequestedDaySpan = mostFrequentDay;
       return queryChartHistory(chartsApiUrl,mostFrequentDay);
     })
     // When the kNearest Neighbours algorithm is finished, get the start and end bitcoin value for the timespan in history, and calculate ratio between every one of them
     .then( (finalResults) => {
       return calculatePrediction(finalResults,bitcoinData.results.USD.last);
     })
-    // When the ratio is calculated, get all tweets containing strings such as 'bitcoin drops' etc. to calculate humanFactor
+    // When the prediction is calculated, get all tweets containing strings such as 'bitcoin drops' etc. to calculate humanFactor
     .then( (prediction) => {
       this.prediction = prediction;
-      console.log(this.prediction);
+
+      console.log('Prediction for the next '+this.lastRequestedDaySpan+' days is: '+this.prediction.finalValue);
+      if(this.prediction.positive == 'true') {
+        console.log('Gain: '+this.prediction.raw);
+        console.log('Gain prctg: '+this.prediction.percentage);
+      }
+      else {
+        console.log('Loss: '+this.prediction.raw);
+        console.log('Loss prctg: '+this.prediction.percentage);
+      }
+
       return collectTweets(bitcoinDropRatesSearchParams).then( (response) => {
         return response.data.statuses.map(status => status.text);
       })
@@ -74,10 +93,14 @@ function work() {
         return humanFactorFunctions.calculateHumanFactor(negativeTweets);
     })
     .then( (humanFactor) => {
-       console.log('Human factor: '+humanFactor);
+       // TODO multiply the prediction by human factor
+       return tweetPrediction(this.prediction, this.lastRequestedDaySpan, this.lastNumberOfPeopleThatRequested);
+    })
+    .then( (tweetPostData) => {
+      console.log('Tweeted!');
     })
 
-  },3000);
+  },WORK_TIMEOUT);
 }
 
 /**
@@ -86,6 +109,31 @@ function work() {
 async function collectTweets(searchParams) {
   return await twitClient.get('search/tweets', searchParams);
 }
+
+async function tweetPrediction(prediction, lastRequestedDaySpan, peopleRequested) {
+  var gainLoss = '';
+  var percentageEmoji = '';
+  if(prediction.positive == 'true')  {
+    gainLoss = '📈 Gain'; 
+    percentageEmoji = '⬆️';
+  }
+  else {
+    gainLoss = '📉 Loss';
+    percentageEmoji = '⬇️';
+  }
+
+  var tweetText = `Bitcoin value in the next ${lastRequestedDaySpan} days should be somewhere about 💰 $${format("#,##0.##",prediction.finalValue)}.
+${gainLoss}: $${format("#,##0.##",prediction.raw)}
+${gainLoss} percentage: ${prediction.percentage.toFixed(2)}% ${percentageEmoji}
+${peopleRequested} 🤵 people requested this prediction.
+
+Request a prediction by tweeting "@coin_instinct Predict for number days".
+See you in an hour ⏲️
+  `;
+  //console.log(tweetText);
+  return await twitClient.post('statuses/update', { status: tweetText });
+}
+
 /**
  * Finds the most frequent day in array of days, and returns it
  * @param {*Array} requestedDays Array of day values
@@ -247,13 +295,23 @@ async function calculatePrediction(data,currentBitcoinValue) {
   // za primljen niz objekata iz funkcije queryChartHistory, prodji kroz svaki izracunaj razliku end-a i start-a, saberi to sve
   // izracunaj prosecnu vrednost povecanja ili smanjenja bitcoina, to sve sabrano / brojdatuma koji se uzimao, npr 5
   // vrati prosecnu vrednost porasta ili pada u narednih n dana
+  var finalPredictionData = {
+    raw: 0,
+    percentage: 0,
+    positive: '',
+    finalValue: 0
+  }
   var sum = 0;
   await forEach(data, async (value) => {
     sum += value.end - value.start;
   })
 
   sum = sum / K;
-  return sum;
+  finalPredictionData.raw = sum;
+  finalPredictionData.finalValue = currentBitcoinValue + sum;
+  finalPredictionData.positive = sum > 0 ? 'true' : 'false';
+  finalPredictionData.percentage = ((finalPredictionData.finalValue - currentBitcoinValue) / currentBitcoinValue) * 100;
+  return finalPredictionData;
 }
 
 /**
