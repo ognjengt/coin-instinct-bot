@@ -1,3 +1,4 @@
+const { forEach } = require('p-iteration');
 const config = require('./config');
 var Twit = require('twit');
 var fetch = require('node-fetch');
@@ -6,8 +7,9 @@ var humanFactorFunctions = require('./humanFactor');
 var bitcoinData = {
   results: ''
 };
-var K = 10;
-var ratio = 0;
+const K = 10;
+const QUERY_RANGE = 60;
+var prediction = 0;
 var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 // Vidi kasnije da li je mozda bolje da tvituju bez #
@@ -56,13 +58,14 @@ function work() {
     .then( (mostFrequentDay) => {
       return queryChartHistory(chartsApiUrl,mostFrequentDay);
     })
-    // When bitcoin value for that specific date is found, calculate the ratio between current bitcoin value, and history bitcoin value
-    .then( (pastBitcoinValue) => {
-      return calculateRatio(pastBitcoinValue,bitcoinData.results.USD.last);
+    // When the kNearest Neighbours algorithm is finished, get the start and end bitcoin value for the timespan in history, and calculate ratio between every one of them
+    .then( (finalResults) => {
+      return calculatePrediction(finalResults,bitcoinData.results.USD.last);
     })
     // When the ratio is calculated, get all tweets containing strings such as 'bitcoin drops' etc. to calculate humanFactor
-    .then( (ratio) => {
-      this.ratio = ratio;
+    .then( (prediction) => {
+      this.prediction = prediction;
+      console.log(this.prediction);
       return collectTweets(bitcoinDropRatesSearchParams).then( (response) => {
         return response.data.statuses.map(status => status.text);
       })
@@ -120,52 +123,31 @@ function refreshBitcoinPrices(tickerApiUrl) {
 
 /**
  * Queries the CoinDesk api for specific date span
- * Returns price of bitcoin for a specific date in history
+ * Returns array of bitcoin values based on k nearest neighbours, start - value on the start day, end - value after n days
  * @param {*String} chartsApiUrl API endpoint for getting bitcoin history values
- * @param {*String} daysInThePast how many days to go backwards
+ * @param {*String} nDays how many days to go backwards
  */
-async function queryChartHistory(chartsApiUrl, daysInThePast) {
-  // Izmeni ovo, kada si otisao n dana u nazad, sada uzmi od tog datuma pa u nazad 2 meseca sve rezultate
-  // Nakon toga nadji recimo 5 datuma koji sadrze najmanju razliku cene btc-a tog datuma sa danasnjim datumom
-  // (ili npr pozovi euclidian() nad svima i onda samo sortiraj po tome koji je najblizi 0)
-  // kada sam uzeo te datume, za svaki taj datum idi n dana u napred i uzmi vrednost btc-a
-  // to sve smesti u objekat, i vrati niz objekata sa vrednostima btc-a pre n dana i za n dana u proslosti
-  /*
-    npr:
-    [
-      {
-        start: 16057,
-        end: 14913
-      },
-      {
-        start: 16858,
-        end: 16057
-      }, ...
-    ]
-  */
-  // dalje se poziva funkcija calculateRatio
+async function queryChartHistory(chartsApiUrl, nDays) {
+
   var nDaysBack = new Date();
-  nDaysBack.setDate(nDaysBack.getDate() - daysInThePast);
+  nDaysBack.setDate(nDaysBack.getDate() - (nDays+1));
   nDaysBack = nDaysBack.toISOString().split('T')[0];
 
-  var twoMonthsBack = new Date();
-  twoMonthsBack.setDate(twoMonthsBack.getDate() - daysInThePast - 60);
-  twoMonthsBack = twoMonthsBack.toISOString().split('T')[0];
+  var nMonthsBack = new Date();
+  nMonthsBack.setDate(nMonthsBack.getDate() - (nDays+1) - QUERY_RANGE);
+  nMonthsBack = nMonthsBack.toISOString().split('T')[0];
 
-  const results = await fetch(chartsApiUrl+'?start='+twoMonthsBack+'&end='+nDaysBack);
+  const results = await fetch(chartsApiUrl+'?start='+nMonthsBack+'&end='+nDaysBack);
   const resultsJson = await results.json();
   //console.log(resultsJson);
 
   const similarities = await calculateSimilarity(resultsJson, chartsApiUrl, bitcoinData.results.USD.last);
   const kNearest = await getNearestNeighbours(similarities);
-
-  // Dobio sam k nearest, sada za svaki taj idi daysInThePast dana u napred i uzmi vrednosti bitcoina od tih datuma u napred i izracunaj razliku bitcoina tog datuma u napred i tog datuma iz liste
-
+  const finalResults = await getFinalResults(kNearest,chartsApiUrl,nDays);
   console.log(kNearest);
-
-  // const result = await fetch(chartsApiUrl+'?'+'start='+nDaysBack+'&end='+nDaysBack);
-  // const json = await result.json();
-  // return json.bpi[''+nDaysBack];
+  console.log(finalResults);
+   
+  return finalResults;
 }
 
 /**
@@ -219,16 +201,59 @@ async function getNearestNeighbours(similarities) {
 }
 
 /**
- * Calculates the bitcoin rise or drop from past value to current value
- * Returns ratio
+ * Returns array of objects containing start and end values
+ * start - value of bitcoin on the start day
+ * end - value of bitcoin after n days
+ * @param {*Array} kNearest 
+ * @param {*String} chartsApiUrl 
+ * @param {*Int} nDays 
+ */
+async function getFinalResults(kNearest,chartsApiUrl,nDays) {
+  var finalResults = [];
+  var finalResult = {};
+  
+  await forEach(kNearest, async(date) => {
+    var dateTime = new Date(date);
+    var pastDate = dateTime.toISOString().split('T')[0];
+
+    var futureDate = new Date(date);
+    futureDate.setDate(futureDate.getDate() + nDays);
+    futureDate = futureDate.toISOString().split('T')[0];
+
+    var valueForThatDay = await fetch(chartsApiUrl+'?start='+pastDate+'&end='+pastDate);
+    var valueForThatDayJson = await valueForThatDay.json();
+
+    var valueForFutureDay = await fetch(chartsApiUrl+'?start='+futureDate+'&end='+futureDate);
+    var valueForFutureDayJson = await valueForFutureDay.json();
+
+    finalResult = {
+      start: valueForThatDayJson.bpi[''+pastDate],
+      end: valueForFutureDayJson.bpi[''+futureDate]
+    }
+
+    finalResults.push(finalResult);
+  })
+  return finalResults;
+
+}
+
+/**
+ * Calculates the prediction
+ * Returns object containing valuable data for prediction
  * @param {*Float} pastBitcoinValue 
  * @param {*Float} currentBitcoinValue 
  */
-async function calculateRatio(pastBitcoinValue,currentBitcoinValue) {
+async function calculatePrediction(data,currentBitcoinValue) {
   // za primljen niz objekata iz funkcije queryChartHistory, prodji kroz svaki izracunaj razliku end-a i start-a, saberi to sve
   // izracunaj prosecnu vrednost povecanja ili smanjenja bitcoina, to sve sabrano / brojdatuma koji se uzimao, npr 5
-  // vrati prosecnu vrednost porasta u narednih n dana
-  return currentBitcoinValue-pastBitcoinValue;
+  // vrati prosecnu vrednost porasta ili pada u narednih n dana
+  var sum = 0;
+  await forEach(data, async (value) => {
+    sum += value.end - value.start;
+  })
+
+  sum = sum / K;
+  return sum;
 }
 
 /**
