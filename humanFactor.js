@@ -28,7 +28,7 @@ async function runStringThroughTrainingData(sentence) {
   return result;
 }
 /**
- * Gets sentances containing the data from trainingData, and their likelyhood for drop/rise
+ * Gets the sentences that contain valid or invalid data, as long with the trainingData that matches those sentences
  * @param {*Array} sentences 
  */
 async function getValidSentences(sentences) {
@@ -37,7 +37,7 @@ async function getValidSentences(sentences) {
   var matches = null;
   sentences.forEach( (sentence) => {
     runStringThroughTrainingData(sentence).then( (result) => {
-      if(result.validDropData[0] || result.invalidDropData[0]) {
+      if(result.validDropData[0] || result.invalidDropData[0]) { // i ako vec ne containuje tu recenicu
         validSentences.push(result);
       }
     })
@@ -52,7 +52,8 @@ async function getValidSentences(sentences) {
  */
 humanFactor.calculateHumanFactor = async (sentences) => {
   var validSentences = await getValidSentences(sentences);
-  console.log(validSentences);
+  // Go through all of the sentences and calculate, if it has lets say 3 validDropData, then the higher the disasterFactor is.
+
 
   return 0.5;
 }

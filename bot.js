@@ -15,7 +15,7 @@ var demandSearchParams = {
   count: 100
 };
 var bitcoinDropRatesSearchParams = {
-  q: 'Bitcoin drops since:2017-12-11',
+  q: 'bitcoin will drop',
   count: 100
 };
 
@@ -124,6 +124,25 @@ function refreshBitcoinPrices(tickerApiUrl) {
  * @param {*String} daysInThePast how many days to go backwards
  */
 async function queryChartHistory(chartsApiUrl, daysInThePast) {
+  // Izmeni ovo, kada si otisao n dana u nazad, sada uzmi od tog datuma pa u nazad 2 meseca sve rezultate
+  // Nakon toga nadji recimo 5 datuma koji sadrze najmanju razliku cene btc-a tog datuma sa danasnjim datumom
+  // (ili npr pozovi euclidian() nad svima i onda samo sortiraj po tome koji je najblizi 0)
+  // kada sam uzeo te datume, za svaki taj datum idi n dana u napred i uzmi vrednost btc-a
+  // to sve smesti u objekat, i vrati niz objekata sa vrednostima btc-a pre n dana i za n dana u proslosti
+  /*
+    npr:
+    [
+      {
+        start: 16057,
+        end: 14913
+      },
+      {
+        start: 16858,
+        end: 16057
+      }, ...
+    ]
+  */
+  // dalje se poziva funkcija calculateRatio
   var date = new Date();
   date.setDate(date.getDate() - daysInThePast);
   date = date.toISOString().split('T')[0];
@@ -140,6 +159,9 @@ async function queryChartHistory(chartsApiUrl, daysInThePast) {
  * @param {*Float} currentBitcoinValue 
  */
 async function calculateRatio(pastBitcoinValue,currentBitcoinValue) {
+  // za primljen niz objekata iz funkcije queryChartHistory, prodji kroz svaki izracunaj razliku end-a i start-a, saberi to sve
+  // izracunaj prosecnu vrednost povecanja ili smanjenja bitcoina, to sve sabrano / brojdatuma koji se uzimao, npr 5
+  // vrati prosecnu vrednost porasta u narednih n dana
   return currentBitcoinValue-pastBitcoinValue;
 }
 
