@@ -1,6 +1,6 @@
 /*
   ------------ TODOS -----------
-  - Get current date on every tweet and put it in demandSearchParams since
+  - Get current date on every tweet and put it in demandSearchParams since ✔️
   - Create local array of random days, so it should pop out of that array if no people tweeted
   - Create a limit of the day, say remove every number from numbers array that is greater than 200
   - Figure out the 50 minute ratio
@@ -32,9 +32,9 @@ var lastNumberOfPeopleThatRequested = 0;
 var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 var coinDeskApiResults = {};
+
 var todayDate = new Date();
 todayDate = todayDate.toISOString().split('T')[0];
-console.log(todayDate);
 // Vidi kasnije da li je mozda bolje da tvituju bez #
 var demandSearchParams = {
   q: '@coin_instinct Predict for since:'+todayDate, 
@@ -58,6 +58,7 @@ refreshBitcoinPrices(tickerApiUrl);
 work();
 
 function work() {
+  // run();
   setInterval(function(){
 
     run();
@@ -167,7 +168,7 @@ See you in an hour ⏲️
  * @param {*Array} requestedDays Array of day values
  */
 async function getMostFrequentDay(requestedDays) {
-  //if(!requestedDays) // TODO use custom array
+  //if(requestedDays[0] == null) // TODO use custom array
   var convertedArray = requestedDays.map(Number);
   return await findMostFrequent(convertedArray);
 }
@@ -184,6 +185,11 @@ function refreshBitcoinPrices(tickerApiUrl) {
     bitcoinData.results = results;
     if(bitcoinData.results) {console.log('Blockchain API works!');}
     else console.log('Blockchain API is down at the moment.');
+
+    // Get todays date
+    this.todayDate = new Date();
+    this.todayDate = this.todayDate.toISOString().split('T')[0];
+    console.log(this.todayDate);
 
     console.log('New prices fetched.');
     console.log('Most recent bitcoin price: '+bitcoinData.results.USD.last);
