@@ -1,3 +1,15 @@
+/*
+  ------------ TODOS -----------
+  - Get current date on every tweet and put it in demandSearchParams since
+  - Create local array of random days, so it should pop out of that array if no people tweeted
+  - Create a limit of the day, say remove every number from numbers array that is greater than 200
+  - Figure out the 50 minute ratio
+  - Figure out how to fire work function instantly first time, and THEN wait
+  - Human factor
+  - Do not repeat requests, tweet like 5 times, before ereasing blackList array, containing number of days you already predicted for
+  - Refactor the code, add comments, explain functions etc...
+  - Change the algorithm so you dont query the API everytime
+*/
 const { forEach } = require('p-iteration');
 const format = require('number-format.js');
 
@@ -19,6 +31,7 @@ var lastRequestedDaySpan = 0;
 var lastNumberOfPeopleThatRequested = 0;
 var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
+var coinDeskApiResults = {};
 // Vidi kasnije da li je mozda bolje da tvituju bez #
 var demandSearchParams = {
   q: '@coin_instinct Predict for since:2017-12-11', 
@@ -44,6 +57,12 @@ work();
 function work() {
   setInterval(function(){
 
+    run();
+
+  },WORK_TIMEOUT);
+}
+
+function run() {
     // Collects tweets that people tweeted to @coin_instinct
     collectTweets(demandSearchParams)
     .then((response) => {
@@ -93,14 +112,12 @@ function work() {
         return humanFactorFunctions.calculateHumanFactor(negativeTweets);
     })
     .then( (humanFactor) => {
-       // TODO multiply the prediction by human factor
-       return tweetPrediction(this.prediction, this.lastRequestedDaySpan, this.lastNumberOfPeopleThatRequested);
+      // TODO multiply the prediction by human factor
+      return tweetPrediction(this.prediction, this.lastRequestedDaySpan, this.lastNumberOfPeopleThatRequested);
     })
     .then( (tweetPostData) => {
       console.log('Tweeted!');
     })
-
-  },WORK_TIMEOUT);
 }
 
 /**
@@ -110,6 +127,12 @@ async function collectTweets(searchParams) {
   return await twitClient.get('search/tweets', searchParams);
 }
 
+/**
+ * Tweets the prediction!
+ * @param {*Object} prediction Object containing prediction data
+ * @param {*Number} lastRequestedDaySpan number of days in the future to predict
+ * @param {*Number} peopleRequested number of people that requested this prediction
+ */
 async function tweetPrediction(prediction, lastRequestedDaySpan, peopleRequested) {
   var gainLoss = '';
   var percentageEmoji = '';
@@ -166,7 +189,7 @@ function refreshBitcoinPrices(tickerApiUrl) {
     // Enable in prod
     // setInterval(() => {
     //   request(tickerApiUrl,chartsApiUrl);
-    // },10000);
+    // },COIN_FETCH_TIMEOUT);
 }
 
 /**
@@ -185,8 +208,16 @@ async function queryChartHistory(chartsApiUrl, nDays) {
   nMonthsBack.setDate(nMonthsBack.getDate() - (nDays+1) - QUERY_RANGE);
   nMonthsBack = nMonthsBack.toISOString().split('T')[0];
 
+  var today = new Date();
+  today.setDate(today.getDate() - 1);
+  today = today.toISOString().split('T')[0];
+
   const results = await fetch(chartsApiUrl+'?start='+nMonthsBack+'&end='+nDaysBack);
   const resultsJson = await results.json();
+
+  const fullResults = await fetch(chartsApiUrl+'?start='+nMonthsBack+'&end='+today);
+  this.coinDeskApiResults = await fullResults.json();
+
   //console.log(resultsJson);
 
   const similarities = await calculateSimilarity(resultsJson, chartsApiUrl, bitcoinData.results.USD.last);
@@ -267,16 +298,19 @@ async function getFinalResults(kNearest,chartsApiUrl,nDays) {
     var futureDate = new Date(date);
     futureDate.setDate(futureDate.getDate() + nDays);
     futureDate = futureDate.toISOString().split('T')[0];
-
+    /*
     var valueForThatDay = await fetch(chartsApiUrl+'?start='+pastDate+'&end='+pastDate);
     var valueForThatDayJson = await valueForThatDay.json();
 
     var valueForFutureDay = await fetch(chartsApiUrl+'?start='+futureDate+'&end='+futureDate);
     var valueForFutureDayJson = await valueForFutureDay.json();
+    */
+    var valueForThatDay = this.coinDeskApiResults.bpi[pastDate];
+    var valueForFutureDay = this.coinDeskApiResults.bpi[futureDate];
 
     finalResult = {
-      start: valueForThatDayJson.bpi[''+pastDate],
-      end: valueForFutureDayJson.bpi[''+futureDate]
+      start: valueForThatDay,
+      end: valueForFutureDay
     }
 
     finalResults.push(finalResult);
