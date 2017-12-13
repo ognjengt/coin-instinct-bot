@@ -36,14 +36,14 @@ var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 var coinDeskApiResults = {};
 
-var blackListArray = [10,20];
+var blackListArray = [2];
 var BLACKLIST_FILL_COUNTER = 0;
 
 var todayDate = new Date();
 todayDate = todayDate.toISOString().split('T')[0];
 // Vidi kasnije da li je mozda bolje da tvituju bez #
 var demandSearchParams = {
-  q: '@coin_instinct Predict for since:2017-12-11', 
+  q: '@coin_instinct Predict for since:'+todayDate, 
   count: 100
 };
 var bitcoinDropRatesSearchParams = {
@@ -147,6 +147,7 @@ async function collectTweets(searchParams) {
 async function tweetPrediction(prediction, lastRequestedDaySpan, peopleRequested) {
   var gainLoss = '';
   var percentageEmoji = '';
+  var peopleData = '';
   if(prediction.positive == 'true')  {
     gainLoss = '📈 Gain'; 
     percentageEmoji = '⬆️';
@@ -156,13 +157,17 @@ async function tweetPrediction(prediction, lastRequestedDaySpan, peopleRequested
     percentageEmoji = '⬇️';
   }
 
+  if(peopleRequested == 0) {
+    peopleData = 'No one requested a prediction in this cycle.'
+  } else peopleData = peopleRequested+' 🤵 people requested this prediction.';
+
   var tweetText = `Bitcoin value in the next ${lastRequestedDaySpan} days should be somewhere about 💰 $${format("#,##0.##",prediction.finalValue)}.
 ${gainLoss}: $${format("#,##0.##",prediction.raw)}
 ${gainLoss} percentage: ${prediction.percentage.toFixed(2)}% ${percentageEmoji}
-${peopleRequested} 🤵 people requested this prediction.
+${peopleData}
+💎 Current BTC value: $${format("#,##0.##",bitcoinData.results.USD.last)}
 
 Request a prediction by tweeting "@coin_instinct Predict for number days".
-See you in an hour ⏲️
   `;
   //console.log(tweetText);
   //console.log('Note to self: Uncomment post line to tweet');
@@ -432,6 +437,9 @@ async function addToBlackList(day) {
   if(blackListArray.includes(day)) return;
   blackListArray.push(day);
   BLACKLIST_FILL_COUNTER++;
+
+  console.log('---Current blacklist---');
+  console.log(blackListArray);
 }
 
 /**
@@ -440,4 +448,6 @@ async function addToBlackList(day) {
 async function clearBlackList() {
   blackListArray = [];
   BLACKLIST_FILL_COUNTER = 0;
+
+  console.log('---- BLACKLIST CLEARED ----')
 }
