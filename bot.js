@@ -64,7 +64,7 @@ refreshBitcoinPrices(tickerApiUrl);
 work();
 
 function work() {
-  // run();
+   run();
   setInterval(function(){
 
     run();
@@ -165,8 +165,8 @@ Request a prediction by tweeting "@coin_instinct Predict for number days".
 See you in an hour ⏲️
   `;
   //console.log(tweetText);
-  console.log('Note to self: Uncomment post line to tweet');
-  //return await twitClient.post('statuses/update', { status: tweetText });
+  //console.log('Note to self: Uncomment post line to tweet');
+  return await twitClient.post('statuses/update', { status: tweetText });
 }
 
 /**
@@ -209,9 +209,9 @@ function refreshBitcoinPrices(tickerApiUrl) {
     request(tickerApiUrl);
 
     // Enable in prod
-    // setInterval(() => {
-    //   request(tickerApiUrl);
-    // },COIN_FETCH_TIMEOUT);
+    setInterval(() => {
+      request(tickerApiUrl);
+    },COIN_FETCH_TIMEOUT);
 }
 
 /**
