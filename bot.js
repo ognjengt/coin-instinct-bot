@@ -1,14 +1,14 @@
 /*
   ------------ TODOS -----------
   - Get current date on every tweet and put it in demandSearchParams since ✔️
-  - Create local array of random days, so it should pop out of that array if no people tweeted
   - Create a limit of the day, say remove every number from numbers array that is greater than 200
-  - Figure out the 50 minute ratio
+  - Figure out the 50 minute ratio ✔️
   - Figure out how to fire work function instantly first time, and THEN wait ✔️
   - Human factor
-  - Do not repeat requests, tweet like 5 times, before ereasing blackList array, containing number of days you already predicted for
+  - Do not repeat requests, tweet like 5 times, before ereasing blackList array, containing number of days you already predicted for ✔️
   - Refactor the code, add comments, explain functions etc...
   - Change the algorithm so you dont query the API everytime ✔️
+  - Figure out how you will print out the people who tweeted, if the people who tweeted are = 0
 */
 const { forEach } = require('p-iteration');
 const format = require('number-format.js');
@@ -23,8 +23,11 @@ var bitcoinData = {
 };
 const K = 10;
 const QUERY_RANGE = 60;
-const WORK_TIMEOUT = 10000; // should be 1000 * 60 * 60
-const COIN_FETCH_TIMEOUT = 5000; // should be 1000 *60 * 55
+const WORK_TIMEOUT = 1000*60*60; // should be 1000 * 60 * 60
+const COIN_FETCH_TIMEOUT = 1000*60*55; // should be 1000 *60 * 55
+const MAX_GENERATED_DAY_VALUE = 20;
+const MIN_GENERATED_DAY_VALUE = 1;
+const BLACKLIST_TIME_TO_CLEAR = 6;
 
 var prediction = {};
 var lastRequestedDaySpan = 0;
@@ -33,11 +36,14 @@ var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 var coinDeskApiResults = {};
 
+var blackListArray = [10,20];
+var BLACKLIST_FILL_COUNTER = 0;
+
 var todayDate = new Date();
 todayDate = todayDate.toISOString().split('T')[0];
 // Vidi kasnije da li je mozda bolje da tvituju bez #
 var demandSearchParams = {
-  q: '@coin_instinct Predict for since:'+todayDate, 
+  q: '@coin_instinct Predict for since:2017-12-11', 
   count: 100
 };
 var bitcoinDropRatesSearchParams = {
@@ -168,9 +174,14 @@ See you in an hour ⏲️
  * @param {*Array} requestedDays Array of day values
  */
 async function getMostFrequentDay(requestedDays) {
-  //if(requestedDays[0] == null) // TODO use custom array
-  var convertedArray = requestedDays.map(Number);
-  return await findMostFrequent(convertedArray);
+  // If no one requested this day, generate random day to predict for
+  var convertedArray = [];
+  if(requestedDays[0] != null) {
+    convertedArray = requestedDays.map(Number);
+    return await findMostFrequent(convertedArray, blackListArray);
+  } else {
+    return await generateRandom(blackListArray);
+  }
 }
 
 /**
@@ -313,7 +324,6 @@ async function getFinalResults(kNearest,chartsApiUrl,nDays) { // remove chartsAp
     var valueForThatDay = this.coinDeskApiResults.bpi[pastDate];
     var valueForFutureDay = this.coinDeskApiResults.bpi[futureDate];
 
-
     finalResult = {
       start: valueForThatDay,
       end: valueForFutureDay
@@ -355,19 +365,49 @@ async function calculatePrediction(data,currentBitcoinValue) {
 }
 
 /**
+ * Generates random number, to predict for
+ * @param {*Array} blackListArr Array of days that have already been predicted and tweeted for
+ */
+async function generateRandom(blackListArr) {
+  var randomDay = 0;
+  while(true) {
+    randomDay = Math.floor(Math.random() * MAX_GENERATED_DAY_VALUE) + MIN_GENERATED_DAY_VALUE;
+    if(blackListArr.includes(randomDay)) continue;
+    else break;
+  }
+  addToBlackList(randomDay);
+  return randomDay;
+}
+
+/**
  * Algorithm behind finding the most frequent number in array
  * @param {*Array} array array of days
+ * @param {*Array} blackListArr blackList array
  */
-async function findMostFrequent(array)
+async function findMostFrequent(array, blackListArr)
 {
   // TODO ideja: kada uzme array taj i ispise onaj koji se najvise ponavlja da sacuva taj broj negde i sledeci put kada uzme, da ne bi ispisivao opet tipa za 5 dana, sada skloni taj najveci i ispisuje onaj sledeci najveci, u narednih tipa 3 sata, onda se sacuvani brojaci resetuju
     if(array.length == 0)
         return null;
     var modeMap = {};
     var maxEl = array[0], maxCount = 1;
+
+    // First go through blackList array and set maxEl to the first element that isn't in the blacklist, if every of the numbers in the array is in the blacklist, then just return generateRandom
+
+    var containsValidNumbers = false;
+    for(var i = 0; i < array.length; i++) {
+      if(!blackListArr.includes(array[i])) {
+        maxEl = array[i];
+        containsValidNumbers = true;
+        break;
+      }
+    }
+    if(!containsValidNumbers) return await generateRandom(blackListArr);
+
     for(var i = 0; i < array.length; i++)
     {
         var el = array[i];
+        if(blackListArr.includes(el)) continue;
         if(modeMap[el] == null)
             modeMap[el] = 1;
         else
@@ -378,5 +418,26 @@ async function findMostFrequent(array)
             maxCount = modeMap[el];
         }
     }
+    await addToBlackList(maxEl);
     return maxEl;
+    
+}
+
+/**
+ * Adds newest day to blackList, so it wont tweet predictions for that day in the next 6 hours
+ * @param {*Number} day day (number) to add to blackListArray
+ */
+async function addToBlackList(day) {
+  if(BLACKLIST_FILL_COUNTER == BLACKLIST_TIME_TO_CLEAR) await clearBlackList();
+  if(blackListArray.includes(day)) return;
+  blackListArray.push(day);
+  BLACKLIST_FILL_COUNTER++;
+}
+
+/**
+ * Clears the blackListArray
+ */
+async function clearBlackList() {
+  blackListArray = [];
+  BLACKLIST_FILL_COUNTER = 0;
 }
