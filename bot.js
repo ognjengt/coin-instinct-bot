@@ -23,11 +23,11 @@ var bitcoinData = {
 };
 const K = 10;
 const QUERY_RANGE = 60;
-const WORK_TIMEOUT = 1000*60*60; // should be 1000 * 60 * 60
-const COIN_FETCH_TIMEOUT = 1000*60*55; // should be 1000 *60 * 55
+const WORK_TIMEOUT = 1000*60*120; // should be 1000 * 60 * 60
+const COIN_FETCH_TIMEOUT = 1000*60*118; // should be 1000 *60 * 55
 const MAX_GENERATED_DAY_VALUE = 20;
 const MIN_GENERATED_DAY_VALUE = 1;
-const BLACKLIST_TIME_TO_CLEAR = 6;
+const BLACKLIST_TIME_TO_CLEAR = 4; // TODO vrati na 6
 
 var prediction = {};
 var lastRequestedDaySpan = 0;
@@ -36,8 +36,8 @@ var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 var coinDeskApiResults = {};
 
-var blackListArray = [20,19,18,17];
-var BLACKLIST_FILL_COUNTER = 0;
+var blackListArray = [13,19,13,15,6,4,2,9,20,17,18];
+var BLACKLIST_FILL_COUNTER = 0; // mozda = blackListArray.length, ali mozda je ovako i bolje zato sto nece u narednih 6 ili koliko sati ispisivati ovako
 
 var todayDate = new Date();
 todayDate = todayDate.toISOString().split('T')[0];
@@ -104,7 +104,7 @@ function run() {
     .then( (prediction) => {
       this.prediction = prediction;
 
-      console.log('Time of prediction: '+Date.now());
+      console.log('Time of prediction: '+new Date().getHours()+':'+new Date().getMinutes());
       console.log('Prediction for the next '+this.lastRequestedDaySpan+' days is: '+this.prediction.finalValue);
       if(this.prediction.positive == 'true') {
         console.log('Gain: '+this.prediction.raw);
@@ -210,6 +210,7 @@ function refreshBitcoinPrices(tickerApiUrl) {
 
     console.log('New prices fetched.');
     console.log('Most recent bitcoin price: '+bitcoinData.results.USD.last);
+    console.log('Time: '+new Date().getHours()+':'+new Date().getMinutes());
   }
 
     request(tickerApiUrl);
