@@ -36,7 +36,7 @@ var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 var coinDeskApiResults = {};
 
-var blackListArray = [2];
+var blackListArray = [20,19,18,17];
 var BLACKLIST_FILL_COUNTER = 0;
 
 var todayDate = new Date();
@@ -104,6 +104,7 @@ function run() {
     .then( (prediction) => {
       this.prediction = prediction;
 
+      console.log('Time of prediction: '+Date.now());
       console.log('Prediction for the next '+this.lastRequestedDaySpan+' days is: '+this.prediction.finalValue);
       if(this.prediction.positive == 'true') {
         console.log('Gain: '+this.prediction.raw);
@@ -161,7 +162,7 @@ async function tweetPrediction(prediction, lastRequestedDaySpan, peopleRequested
     peopleData = 'No one requested a prediction in this cycle.'
   } else peopleData = peopleRequested+' 🤵 people requested this prediction.';
 
-  var tweetText = `Bitcoin value in the next ${lastRequestedDaySpan} days should be somewhere about 💰 $${format("#,##0.##",prediction.finalValue)}.
+  var tweetText = `#Bitcoin value in the next ${lastRequestedDaySpan} days should be somewhere about 💰 $${format("#,##0.##",prediction.finalValue)}.
 ${gainLoss}: $${format("#,##0.##",prediction.raw)}
 ${gainLoss} percentage: ${prediction.percentage.toFixed(2)}% ${percentageEmoji}
 ${peopleData}
@@ -347,9 +348,7 @@ async function getFinalResults(kNearest,chartsApiUrl,nDays) { // remove chartsAp
  * @param {*Float} currentBitcoinValue 
  */
 async function calculatePrediction(data,currentBitcoinValue) {
-  // za primljen niz objekata iz funkcije queryChartHistory, prodji kroz svaki izracunaj razliku end-a i start-a, saberi to sve
-  // izracunaj prosecnu vrednost povecanja ili smanjenja bitcoina, to sve sabrano / brojdatuma koji se uzimao, npr 5
-  // vrati prosecnu vrednost porasta ili pada u narednih n dana
+  
   var finalPredictionData = {
     raw: 0,
     percentage: 0,
