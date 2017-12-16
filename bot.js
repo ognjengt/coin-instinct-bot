@@ -1,13 +1,8 @@
 /*
   ------------ TODOS -----------
-  - Get current date on every tweet and put it in demandSearchParams since ✔️
   - Create a limit of the day, say remove every number from numbers array that is greater than 200
-  - Figure out the 50 minute ratio ✔️
-  - Figure out how to fire work function instantly first time, and THEN wait ✔️
   - Human factor
-  - Do not repeat requests, tweet like 5 times, before ereasing blackList array, containing number of days you already predicted for ✔️
   - Refactor the code, add comments, explain functions etc...
-  - Change the algorithm so you dont query the API everytime ✔️
   - Figure out how you will print out the people who tweeted, if the people who tweeted are = 0
 */
 const { forEach } = require('p-iteration');
@@ -36,8 +31,8 @@ var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 var coinDeskApiResults = {};
 
-var blackListArray = [13,19,13,15,6,4,2,9,20,17,18];
-var BLACKLIST_FILL_COUNTER = 0; // mozda = blackListArray.length, ali mozda je ovako i bolje zato sto nece u narednih 6 ili koliko sati ispisivati ovako
+var blackListArray = [8,7,12,11,10,4,6,13];
+var BLACKLIST_FILL_COUNTER = 0;
 
 var todayDate = new Date();
 todayDate = todayDate.toISOString().split('T')[0];
@@ -251,7 +246,7 @@ async function queryChartHistory(chartsApiUrl, nDays) {
 
   const similarities = await calculateSimilarity(resultsJson, bitcoinData.results.USD.last);
   const kNearest = await getNearestNeighbours(similarities);
-  const finalResults = await getFinalResults(kNearest,chartsApiUrl,nDays);
+  const finalResults = await getFinalResults(kNearest,nDays);
   console.log(kNearest);
   console.log(finalResults);
    
@@ -261,9 +256,8 @@ async function queryChartHistory(chartsApiUrl, nDays) {
 /**
  * Calculates the similarity score (distance between current bitcoin value and all of the other bitcoin values in the past)
  * Returns JSON object with similarity scores ID: date, value: the similarity between current btc value and the value on that day (the lower the number, they are more similar)
- * @param {*Object} data 
- * @param {*String} chartsApiUrl 
- * @param {*Int} currentBTCValue 
+ * @param {*Object} data Data from QUERY_RANGE days back
+ * @param {*Int} currentBTCValue Current bitcoin value
  */
 async function calculateSimilarity(data, currentBTCValue) {
   // Go through all and calculate currentBtc - data[key]
@@ -287,7 +281,7 @@ async function calculateSimilarity(data, currentBTCValue) {
 
 /**
  * Returns k nearest neighbours (dates) based on similarityScores
- * @param {*Array} similarities data with all of the similarity scores compared to current bitcoin value, all the way up to 2 months back
+ * @param {*Array} similarities data with all of the similarity scores compared to current bitcoin value, all the way up to QUERY_RANGE days back
  */
 async function getNearestNeighbours(similarities) {
   // Run through, and find k(10) that are closest to 0
@@ -312,11 +306,10 @@ async function getNearestNeighbours(similarities) {
  * Returns array of objects containing start and end values
  * start - value of bitcoin on the start day
  * end - value of bitcoin after n days
- * @param {*Array} kNearest 
- * @param {*String} chartsApiUrl 
- * @param {*Int} nDays 
+ * @param {*Array} kNearest Array of dates for which the bitcoin value was the most similar to current btc value
+ * @param {*Int} nDays Days to go in the future, and get the value of btc on that date, to compare
  */
-async function getFinalResults(kNearest,chartsApiUrl,nDays) { // remove chartsApiUrl from here if this works
+async function getFinalResults(kNearest,nDays) {
   var finalResults = [];
   var finalResult = {};
   
@@ -345,8 +338,8 @@ async function getFinalResults(kNearest,chartsApiUrl,nDays) { // remove chartsAp
 /**
  * Calculates the prediction
  * Returns object containing valuable data for prediction
- * @param {*Float} pastBitcoinValue 
- * @param {*Float} currentBitcoinValue 
+ * @param {*Array} data Array of objects, containing start and end bitcoin values
+ * @param {*Float} currentBitcoinValue Current btc value
  */
 async function calculatePrediction(data,currentBitcoinValue) {
   
@@ -391,7 +384,6 @@ async function generateRandom(blackListArr) {
  */
 async function findMostFrequent(array, blackListArr)
 {
-  // TODO ideja: kada uzme array taj i ispise onaj koji se najvise ponavlja da sacuva taj broj negde i sledeci put kada uzme, da ne bi ispisivao opet tipa za 5 dana, sada skloni taj najveci i ispisuje onaj sledeci najveci, u narednih tipa 3 sata, onda se sacuvani brojaci resetuju
     if(array.length == 0)
         return null;
     var modeMap = {};
