@@ -1,6 +1,7 @@
 #Custom
 /config.js
 /package-lock.json
+dumps/
 
 # Logs
 logs

@@ -7,6 +7,7 @@
 */
 const { forEach } = require('p-iteration');
 const format = require('number-format.js');
+const fs = require('fs');
 
 const config = require('./config');
 var Twit = require('twit');
@@ -122,6 +123,9 @@ function run() {
       return tweetPrediction(this.prediction, this.lastRequestedDaySpan, this.lastNumberOfPeopleThatRequested);
     })
     .then( (tweetPostData) => {
+      await writeToDump(this.prediction, this.todaysDate);
+    })
+    .then( () => {
       console.log('Tweeted!');
     })
 }
@@ -432,6 +436,7 @@ async function addToBlackList(day) {
 
   console.log('---Current blacklist---');
   console.log(blackListArray);
+  console.log('---BLACKLIST_FILL_COUNTER: '+BLACKLIST_FILL_COUNTER+'---');
 }
 
 /**
@@ -442,4 +447,22 @@ async function clearBlackList() {
   BLACKLIST_FILL_COUNTER = 0;
 
   console.log('---- BLACKLIST CLEARED ----')
+}
+
+/**
+ * Creates a file and writes all of the todays predictions in it
+ * @param {*Object} prediction 
+ * @param {*Date} todaysDate 
+ */
+async function writeToDump(prediction, todaysDate) {
+  // TODO write to file
+  var pathToFile = './dumps/'+todaysDate+'_dump.txt';
+  var futureDate = new Date(todaysDate);
+  futureDate.setDate(futureDate.getDate() + lastRequestedDaySpan);
+  var lineToWrite = futureDate+':'+prediction.finalValue+'\n';
+
+  if (!fs.existsSync(pathToFile)) {
+    fs.writeFileSync(pathToFile,'');
+  }
+  fs.appendFileSync(pathToFile,lineToWrite);
 }
