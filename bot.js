@@ -32,7 +32,7 @@ var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 var coinDeskApiResults = {};
 
-var blackListArray = [8,7,12,11,10,4,6,13];
+var blackListArray = [56,1,18,17,16,15,14];
 var BLACKLIST_FILL_COUNTER = 0;
 
 var todayDate = new Date();
@@ -123,7 +123,7 @@ function run() {
       return tweetPrediction(this.prediction, this.lastRequestedDaySpan, this.lastNumberOfPeopleThatRequested);
     })
     .then( (tweetPostData) => {
-      await writeToDump(this.prediction, this.todaysDate);
+      return writeToDump(this.prediction);
     })
     .then( () => {
       console.log('Tweeted!');
@@ -454,11 +454,15 @@ async function clearBlackList() {
  * @param {*Object} prediction 
  * @param {*Date} todaysDate 
  */
-async function writeToDump(prediction, todaysDate) {
+async function writeToDump(prediction) {
   // TODO write to file
-  var pathToFile = './dumps/'+todaysDate+'_dump.txt';
-  var futureDate = new Date(todaysDate);
-  futureDate.setDate(futureDate.getDate() + lastRequestedDaySpan);
+  var today = new Date();
+  today = today.toISOString().split('T')[0];
+  var pathToFile = './dumps/'+today+'_dump.txt';
+
+  var futureDate = new Date();
+  futureDate.setDate(futureDate.getDate() + this.lastRequestedDaySpan);
+  futureDate = futureDate.toISOString().split('T')[0];
   var lineToWrite = futureDate+':'+prediction.finalValue+'\n';
 
   if (!fs.existsSync(pathToFile)) {
