@@ -32,7 +32,7 @@ var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 var coinDeskApiResults = {};
 
-var blackListArray = [56,1,18,17,16,15,14];
+var blackListArray = [7,2,20,15,13,17,10];
 var BLACKLIST_FILL_COUNTER = 0;
 
 var todayDate = new Date();
