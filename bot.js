@@ -18,12 +18,12 @@ var bitcoinData = {
   results: ''
 };
 const K = 10;
-const QUERY_RANGE = 60;
-const WORK_TIMEOUT = 1000*60*120; // should be 1000 * 60 * 60
-const COIN_FETCH_TIMEOUT = 1000*60*118; // should be 1000 *60 * 55
+const QUERY_RANGE = 60; // How much days to go back in history to search for results (QUERY_RANGE + requestedDays)
+const WORK_TIMEOUT = 1000*60*120; // Wake the bot every 2 hours (tweet every 2 hours)
+const COIN_FETCH_TIMEOUT = 1000*60*118; // Fetch latest bitcoin prices 2 minutes before the bot awakens
 const MAX_GENERATED_DAY_VALUE = 20;
 const MIN_GENERATED_DAY_VALUE = 1;
-const BLACKLIST_TIME_TO_CLEAR = 4; // TODO vrati na 6
+const BLACKLIST_TIME_TO_CLEAR = 4;
 
 var prediction = {};
 var lastRequestedDaySpan = 0;
@@ -32,7 +32,7 @@ var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 var coinDeskApiResults = {};
 
-var blackListArray = [7,2,20,15,13,17,10];
+var blackListArray = [14,1,6,8,19,12,15];
 var BLACKLIST_FILL_COUNTER = 0;
 
 var todayDate = new Date();
