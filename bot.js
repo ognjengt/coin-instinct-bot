@@ -2,6 +2,7 @@
   ------------ TODOS -----------
   - Create a limit of the day, say remove every number from numbers array that is greater than 200
   - Human factor
+  - Write blacklist in a file
 */
 const { forEach } = require('p-iteration');
 const format = require('number-format.js');
@@ -30,7 +31,7 @@ var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 var coinDeskApiResults = {};
 
-var blackListArray = [9,15,19,18,17,16];
+var blackListArray = [9,15,19,18,17,16,7,10];
 var BLACKLIST_FILL_COUNTER = 0;
 
 var todayDate = new Date();
