@@ -32,7 +32,7 @@ var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 var coinDeskApiResults = {};
 
-var blackListArray = [14,1,6,8,19,12,15];
+var blackListArray = [9,15,19,18,17,16];
 var BLACKLIST_FILL_COUNTER = 0;
 
 var todayDate = new Date();
@@ -77,7 +77,7 @@ function run() {
     // When all the tweets are here, go through them, extract numbers and find most frequent day
     .then( (tweets) => {
       var requestedDays = [];
-      tweets = tweets.filter(tweet => tweet.includes('@coin_instinct Predict for'));
+      tweets = tweets.filter(tweet => tweet.includes('@coin_instinct Predict for') || tweet.includes('@coin_instinct predict for'));
       console.log(tweets);
 
       tweets.forEach((tweet) => {
@@ -87,7 +87,7 @@ function run() {
       this.lastNumberOfPeopleThatRequested = requestedDays.length;
       return getMostFrequentDay(requestedDays);
     })
-    // When most frequent day is found, get bitcoin value of that specific date in the history
+    // When most frequent day is found, run the algorithm and get final results
     .then( (mostFrequentDay) => {
       this.lastRequestedDaySpan = mostFrequentDay;
       return queryChartHistory(chartsApiUrl,mostFrequentDay);
@@ -419,6 +419,7 @@ async function findMostFrequent(array, blackListArr)
             maxCount = modeMap[el];
         }
     }
+    lastNumberOfPeopleThatRequested = maxCount;
     await addToBlackList(maxEl);
     return maxEl;
     
