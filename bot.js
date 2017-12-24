@@ -2,8 +2,6 @@
   ------------ TODOS -----------
   - Create a limit of the day, say remove every number from numbers array that is greater than 200
   - Human factor
-  - Refactor the code, add comments, explain functions etc...
-  - Figure out how you will print out the people who tweeted, if the people who tweeted are = 0
 */
 const { forEach } = require('p-iteration');
 const format = require('number-format.js');
@@ -37,7 +35,7 @@ var BLACKLIST_FILL_COUNTER = 0;
 
 var todayDate = new Date();
 todayDate = todayDate.toISOString().split('T')[0];
-// Vidi kasnije da li je mozda bolje da tvituju bez #
+
 var demandSearchParams = {
   q: '@coin_instinct Predict for since:'+todayDate, 
   count: 100
