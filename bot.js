@@ -377,6 +377,7 @@ async function generateRandom(blackListArr) {
     if(blackListArr.includes(randomDay)) continue;
     else break;
   }
+  lastNumberOfPeopleThatRequested = 0;
   addToBlackList(randomDay);
   return randomDay;
 }
