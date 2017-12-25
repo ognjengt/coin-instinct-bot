@@ -22,7 +22,7 @@ const WORK_TIMEOUT = 1000*60*120; // Wake the bot every 2 hours (tweet every 2 h
 const COIN_FETCH_TIMEOUT = 1000*60*118; // Fetch latest bitcoin prices 2 minutes before the bot awakens
 const MAX_GENERATED_DAY_VALUE = 20;
 const MIN_GENERATED_DAY_VALUE = 1;
-const BLACKLIST_TIME_TO_CLEAR = 4;
+const BLACKLIST_TIME_TO_CLEAR = 5;
 
 var prediction = {};
 var lastRequestedDaySpan = 0;
@@ -31,7 +31,7 @@ var tickerApiUrl = "https://blockchain.info/ticker";
 var chartsApiUrl = "https://api.coindesk.com/v1/bpi/historical/close.json";
 var coinDeskApiResults = {};
 
-var blackListArray = [9,15,19,18,17,16,7,10];
+var blackListArray = [];
 var BLACKLIST_FILL_COUNTER = 0;
 
 var todayDate = new Date();
@@ -68,9 +68,14 @@ function work() {
 }
 
 function run() {
-    // Collects tweets that people tweeted to @coin_instinct
-    collectTweets(demandSearchParams)
-    .then((response) => {
+    fetchBlacklist()
+    .then( (blackList) => {
+      // Collects tweets that people tweeted to @coin_instinct
+      blackListArray = blackList;
+      console.log(blackListArray);
+      return collectTweets(demandSearchParams);
+    })
+    .then( (response) => {
       return response.data.statuses.map(status => status.text);
     })
     // When all the tweets are here, go through them, extract numbers and find most frequent day
@@ -434,6 +439,8 @@ async function addToBlackList(day) {
   if(blackListArray.includes(day)) return;
   blackListArray.push(day);
   BLACKLIST_FILL_COUNTER++;
+  // Write to blacklist.txt
+  fs.writeFileSync('blacklist.txt',blackListArray.toString());
 
   console.log('---Current blacklist---');
   console.log(blackListArray);
@@ -470,4 +477,14 @@ async function writeToDump(prediction) {
     fs.writeFileSync(pathToFile,'');
   }
   fs.appendFileSync(pathToFile,lineToWrite);
+}
+
+/**
+ * Fetches the blacklist from blacklist.txt
+ * @returns array of numbers in blacklist
+ */
+async function fetchBlacklist() {
+  var blackListString = fs.readFileSync('blacklist.txt').toString();
+  var fetched = blackListString.split(",").map(Number);
+  return fetched;
 }
