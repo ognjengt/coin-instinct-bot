@@ -2,7 +2,6 @@
   ------------ TODOS -----------
   - Create a limit of the day, say remove every number from numbers array that is greater than 200
   - Human factor
-  - Write blacklist in a file
 */
 const { forEach } = require('p-iteration');
 const format = require('number-format.js');
@@ -124,7 +123,7 @@ function run() {
     })
     .then( (humanFactor) => {
       // TODO multiply the prediction by human factor
-      return tweetPrediction(this.prediction, this.lastRequestedDaySpan, this.lastNumberOfPeopleThatRequested);
+      return tweetPrediction(this.prediction, this.lastRequestedDaySpan, lastNumberOfPeopleThatRequested);
     })
     .then( (tweetPostData) => {
       return writeToDump(this.prediction);
@@ -454,7 +453,7 @@ async function clearBlackList() {
   blackListArray = [];
   BLACKLIST_FILL_COUNTER = 0;
 
-  console.log('---- BLACKLIST CLEARED ----')
+  console.log('---- BLACKLIST CLEARED ----');
 }
 
 /**
