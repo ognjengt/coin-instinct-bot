@@ -1,6 +1,5 @@
 /*
   ------------ TODOS -----------
-  - Create a limit of the day, say remove every number from numbers array that is greater than 200
   - Human factor
 */
 const { forEach } = require('p-iteration');
@@ -71,7 +70,6 @@ function run() {
     .then( (blackList) => {
       // Collects tweets that people tweeted to @coin_instinct
       blackListArray = blackList;
-      console.log(blackListArray);
       return collectTweets(demandSearchParams);
     })
     .then( (response) => {
@@ -85,7 +83,7 @@ function run() {
 
       tweets.forEach((tweet) => {
         var day = tweet.match(/\d+/g);
-        if(day != null) requestedDays.push(day[0]);
+        if(day != null && day < 1000) requestedDays.push(day[0]);
       });
       this.lastNumberOfPeopleThatRequested = requestedDays.length;
       return getMostFrequentDay(requestedDays);
