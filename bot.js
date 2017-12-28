@@ -83,7 +83,7 @@ function run() {
 
       tweets.forEach((tweet) => {
         var day = tweet.match(/\d+/g);
-        if(day != null && day < 1000) requestedDays.push(day[0]);
+        if(day != null && day > 0 && day < 1000) requestedDays.push(day[0]);
       });
       this.lastNumberOfPeopleThatRequested = requestedDays.length;
       return getMostFrequentDay(requestedDays);
